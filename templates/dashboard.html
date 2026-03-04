@@ -137,6 +137,21 @@
       border-radius:14px;
       padding:10px;
     }
+    .ratioBar{
+      height:10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      overflow:hidden;
+      width:110px;
+    }
+    .ratioFill{
+      height:100%;
+      width:0%;
+      background: rgba(98,214,160,.55); /* vert */
+    }
+    .smallMuted{color:var(--muted); font-size:12px;}
+    .trendCell svg{display:block;}
   </style>
 </head>
 <body>
@@ -226,10 +241,32 @@
           <tr>
             <td>{{ r.id }}</td>
             <td>{{ r.ts }}</td>
+          
             <td style="color:var(--ok); font-weight:800">{{ r.passed }}</td>
             <td style="color:var(--bad); font-weight:800">{{ r.failed }}</td>
+          
+            <!-- RATIO: barre + texte -->
+            <td>
+              <div class="ratioBar">
+                <div class="ratioFill" style="width: {{ ((1 - r.err_rate) * 100)|round(0) }}%"></div>
+              </div>
+              <div class="smallMuted">{{ r.ratio }}</div>
+            </td>
+          
+            <!-- ERR RATE -->
             <td>{{ (r.err_rate * 100)|round(1) }}%</td>
+          
+            <!-- AVG -->
             <td>{{ r.lat }}</td>
+          
+            <!-- TREND -->
+            <td class="smallMuted">
+              {% if r.trend_dir == "up" %}▲ +{{ r.trend_delta }}ms
+              {% elif r.trend_dir == "down" %}▼ {{ r.trend_delta }}ms
+              {% else %}—{% endif %}
+            </td>
+          
+            <!-- STATUS -->
             <td>
               {% if r.status == "PASS" %}
                 <span class="badge ok">● OK</span>
@@ -237,6 +274,7 @@
                 <span class="badge bad">● FAIL</span>
               {% endif %}
             </td>
+          
             <td><a class="link" href="/run/{{ r.id }}">Details →</a></td>
           </tr>
           {% endfor %}
@@ -248,86 +286,76 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const labels = {{ labels|tojson }};
-  const lat = {{ lat_series|tojson }};
-  const passed = {{ pass_series|tojson }};
-  const failed = {{ fail_series|tojson }};
-
-  const latEl = document.getElementById("latChart");
-  const pfEl  = document.getElementById("pfChart");
-
-  if (latEl) {
-    new Chart(latEl, {
-      type: "line",
-      data: {
-        labels,
-        const p95 = {{ p95_series|tojson }};
-
-        datasets: [
-          { label: "Avg (ms)", data: lat, tension: 0.35, borderWidth: 2, pointRadius: 2 },
-          { label: "p95 (rolling)", data: p95, tension: 0.35, borderWidth: 2, pointRadius: 2, borderDash: [6,6] }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: "#cdd6ff" } } },
-        scales: {
-          x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
-          y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const labels = {{ labels|tojson }};
+    const avg = {{ lat_series|tojson }};
+    const p95 = {{ p95_series|tojson }};
+    const passed = {{ pass_series|tojson }};
+    const failed = {{ fail_series|tojson }};
+  
+    const latEl = document.getElementById("latChart");
+    const pfEl  = document.getElementById("pfChart");
+  
+    // Chart Latence (AVG + P95)
+    if (latEl) {
+      new Chart(latEl, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Avg (ms)",
+              data: avg,
+              tension: 0.35,
+              borderWidth: 2,
+              pointRadius: 2,
+              borderColor: "rgba(120,170,255,.95)"
+            },
+            {
+              label: "p95 (rolling)",
+              data: p95,
+              tension: 0.35,
+              borderWidth: 2,
+              pointRadius: 2,
+              borderDash: [6,6],
+              borderColor: "rgba(200,140,255,.95)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#cdd6ff" } } },
+          scales: {
+            x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
+            y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+          }
         }
-      }
-    });
-  }
-
-  if (pfEl) {
-    new Chart(pfEl, {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [
-          { label: "Passed", data: passed, borderWidth: 0 },
-          { label: "Failed", data: failed, borderWidth: 0 }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: "#cdd6ff" } } },
-        scales: {
-          x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
-          y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+      });
+    }
+  
+    // Chart Pass/Fail (vert/rouge)
+    if (pfEl) {
+      new Chart(pfEl, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            { label: "Passed", data: passed, borderWidth: 0, backgroundColor: "rgba(98,214,160,.70)" },
+            { label: "Failed", data: failed, borderWidth: 0, backgroundColor: "rgba(255,107,122,.70)" }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#cdd6ff" } } },
+          scales: {
+            x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
+            y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+          }
         }
-      }
-    });
-  }
-});
-</script>
-<script>
-const runBtn = document.getElementById("runBtn");
-const runStatus = document.getElementById("runStatus");
-
-if(runBtn){
-  runBtn.addEventListener("click", async () => {
-    runBtn.disabled = true;
-    runStatus.textContent = "Run en cours...";
-
-    try{
-      const res = await fetch("/run", { cache: "no-store" });
-      const data = await res.json().catch(() => null);
-
-      if(!res.ok){
-        throw new Error(data?.error || ("HTTP " + res.status));
-      }
-
-      runStatus.textContent = "✅ Run terminé. Refresh...";
-      setTimeout(() => window.location.reload(), 600);
-    }catch(e){
-      runStatus.textContent = "❌ Erreur: " + e.message;
-      runBtn.disabled = false;
+      });
     }
   });
-}
-</script>
+  </script>
 </body>
 </html>
