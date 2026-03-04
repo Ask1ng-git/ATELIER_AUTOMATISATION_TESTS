@@ -126,7 +126,7 @@
     @media (max-width: 980px){
       .grid2{grid-template-columns:1fr;}
     }
-    .headerline{
+    .sectionTitle{
       font-weight:700;
       margin-bottom:10px;
       color:#dbe6ff;
@@ -191,18 +191,18 @@
 
     <div class="grid2">
     <div class="card">
-      <div class="headerline">⚡ Latence (ms)</div>
+      <div class="sectionTitle">⚡ Latence (ms)</div>
       <canvas id="latChart" height="120"></canvas>
     </div>
 
   <div class="card">
-    <div class="headerline">✅ Tests pass / fail</div>
+    <div class="sectionTitle">✅ Tests pass / fail</div>
     <canvas id="pfChart" height="120"></canvas>
   </div>
 </div>
 
     <div class="card">
-      <div class="headerline">
+      <div class="sectionTitle">
         <div>📊 Historique des runs</div>
       </div>
 
@@ -246,61 +246,57 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const labels = {{ labels|tojson }};
-    const lat = {{ lat_series|tojson }};
-    const passed = {{ pass_series|tojson }};
-    const failed = {{ fail_series|tojson }};
-  
-    const latEl = document.getElementById("latChart");
-    const pfEl  = document.getElementById("pfChart");
-  
-    if(latEl){
-      new Chart(latEl, {
-        type: "line",
-        data: { labels, datasets: [{ label: "Latency (ms)", data: lat, tension: 0.35, borderWidth: 2, pointRadius: 2 }] },
-        options: { responsive: true, plugins:{ legend:{ labels:{ color:"#cdd6ff" } } },
-          scales:{ x:{ ticks:{ color:"#9aa6c3" }, grid:{ color:"rgba(255,255,255,.06)" } },
-                  y:{ ticks:{ color:"#9aa6c3" }, grid:{ color:"rgba(255,255,255,.06)" } } } }
-      });
-    }
-  
-    if(pfEl){
-      new Chart(pfEl, {
-        type: "bar",
-        data: { labels, datasets: [
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const labels = {{ labels|tojson }};
+  const lat = {{ lat_series|tojson }};
+  const passed = {{ pass_series|tojson }};
+  const failed = {{ fail_series|tojson }};
+
+  const latEl = document.getElementById("latChart");
+  const pfEl  = document.getElementById("pfChart");
+
+  if (latEl) {
+    new Chart(latEl, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "Latency (ms)", data: lat, tension: 0.35, borderWidth: 2, pointRadius: 2 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#cdd6ff" } } },
+        scales: {
+          x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
+          y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+        }
+      }
+    });
+  }
+
+  if (pfEl) {
+    new Chart(pfEl, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
           { label: "Passed", data: passed, borderWidth: 0 },
           { label: "Failed", data: failed, borderWidth: 0 }
-        ]},
-        options: { responsive: true, plugins:{ legend:{ labels:{ color:"#cdd6ff" } } },
-          scales:{ x:{ ticks:{ color:"#9aa6c3" }, grid:{ color:"rgba(255,255,255,.06)" } },
-                  y:{ ticks:{ color:"#9aa6c3" }, grid:{ color:"rgba(255,255,255,.06)" } } } }
-      });
-    }
-  });
-  </script>
-  <script>
-const runBtn = document.getElementById("runBtn");
-const runStatus = document.getElementById("runStatus");
-
-if(runBtn){
-  runBtn.addEventListener("click", async () => {
-    runBtn.disabled = true;
-    runStatus.textContent = "Run en cours...";
-
-    try{
-      const res = await fetch("/run");
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      await res.json();
-      runStatus.textContent = "✅ Run terminé. Refresh...";
-      setTimeout(() => window.location.reload(), 700);
-    }catch(e){
-      runStatus.textContent = "❌ Erreur: " + e.message;
-      runBtn.disabled = false;
-    }
-  });
-}
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#cdd6ff" } } },
+        scales: {
+          x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
+          y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+        }
+      }
+    });
+  }
+});
 </script>
 </body>
 </html>
