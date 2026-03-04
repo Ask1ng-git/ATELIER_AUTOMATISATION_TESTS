@@ -13,8 +13,8 @@ app = Flask(__name__)
 def consignes():
      return render_template('consignes.html')
 
-API_NAME = "Quotable"
-API_URL = "https://api.quotable.io/random"
+API_NAME = "Open-Meteo"
+API_URL = "https://api.open-meteo.com/v1/forecast?latitude=48.85&longitude=2.35&current_weather=true"
 DB_PATH = "runs.db"
 
 def db_init():
@@ -130,11 +130,15 @@ def run_tests():
             data = r.json()
             add_test("JSON parse", True)
 
-            add_test("Field 'content' present", "content" in data, str(list(data.keys())[:10]))
-            add_test("Field 'author' present", "author" in data, str(list(data.keys())[:10]))
-
-            ok_types = isinstance(data.get("content"), str) and isinstance(data.get("author"), str)
-            add_test("Types content/author are strings", ok_types, f"types: {type(data.get('content'))}, {type(data.get('author'))}")
+            # Open-Meteo checks
+             add_test("Field 'current_weather' present", "current_weather" in data, str(list(data.keys())[:10]))
+               
+             cw = data.get("current_weather", {})
+             add_test("Field 'temperature' present", "temperature" in cw, str(list(cw.keys())[:10]))
+             add_test("Temperature is number", isinstance(cw.get("temperature"), (int, float)), f"type: {type(cw.get('temperature'))}")
+               
+             add_test("Field 'windspeed' present", "windspeed" in cw, str(list(cw.keys())[:10]))
+             add_test("Windspeed is number", isinstance(cw.get("windspeed"), (int, float)), f"type: {type(cw.get('windspeed'))}")
 
             break  # succès, stop retry
 
