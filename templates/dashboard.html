@@ -298,5 +298,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 </script>
+<script>
+const runBtn = document.getElementById("runBtn");
+const runStatus = document.getElementById("runStatus");
+
+if(runBtn){
+  runBtn.addEventListener("click", async () => {
+    runBtn.disabled = true;
+    runStatus.textContent = "Run en cours...";
+
+    try{
+      const res = await fetch("/run", { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+
+      if(!res.ok){
+        throw new Error(data?.error || ("HTTP " + res.status));
+      }
+
+      runStatus.textContent = "✅ Run terminé. Refresh...";
+      setTimeout(() => window.location.reload(), 600);
+    }catch(e){
+      runStatus.textContent = "❌ Erreur: " + e.message;
+      runBtn.disabled = false;
+    }
+  });
+}
+</script>
 </body>
 </html>
