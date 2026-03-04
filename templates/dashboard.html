@@ -19,6 +19,52 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const labels = {{ labels|tojson }};
+      const lat = {{ lat_series|tojson }};
+      const passed = {{ pass_series|tojson }};
+      const failed = {{ fail_series|tojson }};
+    
+      // Latence chart
+      new Chart(document.getElementById("latChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "Latency (ms)", data: lat, tension: 0.35, borderWidth: 2, pointRadius: 2 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#cdd6ff" } } },
+          scales: {
+            x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
+            y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+          }
+        }
+      });
+    
+      // Pass/Fail chart
+      new Chart(document.getElementById("pfChart"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            { label: "Passed", data: passed, borderWidth: 0 },
+            { label: "Failed", data: failed, borderWidth: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#cdd6ff" } } },
+          scales: {
+            x: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } },
+            y: { ticks: { color: "#9aa6c3" }, grid: { color: "rgba(255,255,255,.06)" } }
+          }
+        }
+      });
+    </script>
     body{
       margin:0;
       min-height:100vh;
@@ -114,6 +160,27 @@
     .badge.bad{color:var(--bad); border-color: rgba(255,107,122,.35); background: rgba(255,107,122,.10);}
     .link{color: var(--accent); text-decoration:none; font-weight:700}
     .link:hover{text-decoration:underline}
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      margin-top:14px;
+    }
+    @media (max-width: 980px){
+      .grid2{grid-template-columns:1fr;}
+    }
+    .headerline{
+      font-weight:700;
+      margin-bottom:10px;
+      color:#dbe6ff;
+    }
+    canvas{
+      background: rgba(0,0,0,.12);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px;
+    }
   </style>
 </head>
 <body>
@@ -164,6 +231,18 @@
         </div>
       </div>
     </div>
+
+    <div class="grid2">
+    <div class="card">
+      <div class="headerline">⚡ Latence (ms)</div>
+      <canvas id="latChart" height="120"></canvas>
+    </div>
+
+  <div class="card">
+    <div class="headerline">✅ Tests pass / fail</div>
+    <canvas id="pfChart" height="120"></canvas>
+  </div>
+</div>
 
     <div class="card">
       <div class="headerline">
