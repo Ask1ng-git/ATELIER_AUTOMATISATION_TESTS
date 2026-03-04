@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Details run #{{ run.id }}</title>
+  <style>
+    body{font-family:system-ui; background:#0b1020; color:#e9edff; margin:0; padding:22px;}
+    a{color:#4dd9c7; text-decoration:none; font-weight:700}
+    pre{background:rgba(255,255,255,.06); padding:12px; border-radius:12px; overflow:auto;}
+    .ok{color:#62d6a0; font-weight:800}
+    .bad{color:#ff6b7a; font-weight:800}
+  </style>
+</head>
+<body>
+  <a href="/dashboard">← Retour dashboard</a>
+  <h1>Run #{{ run.id }} — {{ api }}</h1>
+  <p>Date: {{ run.ts }} | Status:
+    {% if run.status == "PASS" %}<span class="ok">PASS</span>{% else %}<span class="bad">FAIL</span>{% endif %}
+    | HTTP {{ run.http }} | {{ run.lat }} ms
+  </p>
+
+  <h2>Tests</h2>
+  <pre>{{ run.tests | tojson(indent=2) }}</pre>
+</body>
+</html>
