@@ -213,6 +213,8 @@ def run_endpoint():
     ))
     return jsonify(result)
 
+from flask import make_response
+
 @app.get("/export.json")
 def export_json():
     db_init()
@@ -227,7 +229,13 @@ def export_json():
         "passed": r[6],
         "failed": r[7],
     } for r in rows]
-    return jsonify({"api": API_NAME, "runs": data})
+
+    payload = {"api": API_NAME, "runs": data}
+
+    resp = make_response(json.dumps(payload, indent=2))
+    resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    resp.headers["Content-Disposition"] = 'attachment; filename="runs_export.json"'
+    return resp
 
 
 def get_run_details(run_id: int):
@@ -237,6 +245,19 @@ def get_run_details(run_id: int):
     row = cur.fetchone()
     conn.close()
     return row
+
+
+def rolling_p95(series, window=10):
+    out = []
+    for i in range(len(series)):
+        w = series[max(0, i-window+1):i+1]
+        w = sorted([x for x in w if x is not None])
+        if not w:
+            out.append(0)
+            continue
+        k = int(round(0.95 * (len(w)-1)))
+        out.append(w[k])
+    return out
 
 @app.get("/run/<int:run_id>")
 def run_details(run_id):
@@ -270,17 +291,40 @@ def dashboard():
     db_init()
     qos = compute_qos()
 
-    rows = list_runs_full(20)
+    rows = list_runs_full(20)  # newest first
     runs_fmt = []
-    for r in rows:
+    for idx, r in enumerate(rows):
+        run_id, ts, status, http, lat, passed, failed = r
+        total = (passed or 0) + (failed or 0)
+
+        # ratio texte
+        ratio_txt = f"{passed} pass / {failed} fail"
+
+        # err rate par run
+        err_rate = round((failed or 0) / total, 3) if total else 0
+
+        # trend lat vs previous (car rows est newest first: idx+1 est previous)
+        trend_dir = "eq"
+        trend_delta = 0
+        if idx + 1 < len(rows):
+            prev_lat = rows[idx + 1][4]
+            if lat is not None and prev_lat is not None:
+                trend_delta = round(lat - prev_lat, 2)
+                if trend_delta > 0: trend_dir = "up"
+                elif trend_delta < 0: trend_dir = "down"
+
         runs_fmt.append({
-            "id": r[0],
-            "ts": fmt_ts(r[1]),
-            "status": r[2],
-            "http": r[3],
-            "lat": r[4],
-            "passed": r[5],
-            "failed": r[6],
+            "id": run_id,
+            "ts": fmt_ts(ts),
+            "status": status,
+            "http": http,
+            "lat": lat,
+            "passed": passed,
+            "failed": failed,
+            "ratio": ratio_txt,
+            "err_rate": err_rate,
+            "trend_dir": trend_dir,
+            "trend_delta": trend_delta,
         })
 
     last = runs_fmt[0] if runs_fmt else None
@@ -288,7 +332,10 @@ def dashboard():
 
     labels, lat_series, pass_series, fail_series = build_series(rows)
 
-    # delta latence vs run précédent (pour le petit "+34ms")
+    # p95 roulante (sur lat_series)
+    p95_series = rolling_p95(lat_series, window=10)
+
+    # delta vs previous (pour petit badge)
     delta_lat = None
     if last and prev and last["lat"] is not None and prev["lat"] is not None:
         delta_lat = round(last["lat"] - prev["lat"], 2)
@@ -302,6 +349,7 @@ def dashboard():
         delta_lat=delta_lat,
         labels=labels,
         lat_series=lat_series,
+        p95_series=p95_series,   
         pass_series=pass_series,
         fail_series=fail_series,
     )
