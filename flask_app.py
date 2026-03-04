@@ -8,6 +8,8 @@ import time
 import requests
 from datetime import datetime
 
+app = Flask(__name__)
+
 API_NAME = "Quotable"
 API_URL = "https://api.quotable.io/random"
 DB_PATH = "runs.db"
