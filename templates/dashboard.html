@@ -152,6 +152,16 @@
     }
     .smallMuted{color:var(--muted); font-size:12px;}
     .trendCell svg{display:block;}
+    .spinner{
+      width:14px; height:14px;
+      border:2px solid rgba(255,255,255,.25);
+      border-top-color: var(--accent);
+      border-radius:50%;
+      display:inline-block;
+      animation: spin .8s linear infinite;
+      vertical-align:middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -357,5 +367,34 @@
     }
   });
   </script>
+  <script>
+  const runBtn = document.getElementById("runBtn");
+  const runStatus = document.getElementById("runStatus");
+
+  if (runBtn) {
+    runBtn.addEventListener("click", async () => {
+      runBtn.disabled = true;
+      runBtn.style.opacity = "0.7";
+      runStatus.innerHTML = '<span class="spinner"></span> Run en cours...';
+
+      try {
+        const res = await fetch("/run", { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(data?.error || ("HTTP " + res.status));
+        }
+
+        runStatus.textContent = "✅ Run terminé. Refresh...";
+        setTimeout(() => window.location.reload(), 600);
+
+      } catch (e) {
+        runStatus.textContent = "❌ Erreur: " + e.message;
+        runBtn.disabled = false;
+        runBtn.style.opacity = "1";
+      }
+    });
+  }
+</script>
 </body>
 </html>
