@@ -129,16 +129,17 @@ def run_tests():
 
             data = r.json()
             add_test("JSON parse", True)
-
             # Open-Meteo checks
-             add_test("Field 'current_weather' present", "current_weather" in data, str(list(data.keys())[:10]))
-               
-             cw = data.get("current_weather", {})
-             add_test("Field 'temperature' present", "temperature" in cw, str(list(cw.keys())[:10]))
-             add_test("Temperature is number", isinstance(cw.get("temperature"), (int, float)), f"type: {type(cw.get('temperature'))}")
-               
-             add_test("Field 'windspeed' present", "windspeed" in cw, str(list(cw.keys())[:10]))
-             add_test("Windspeed is number", isinstance(cw.get("windspeed"), (int, float)), f"type: {type(cw.get('windspeed'))}")
+            add_test("Field 'current_weather' present", "current_weather" in data, str(list(data.keys())[:10]))
+          
+            cw = data.get("current_weather", {})
+            add_test("Field 'temperature' present", "temperature" in cw, str(list(cw.keys())[:10]))
+            add_test("Temperature is number", isinstance(cw.get("temperature"), (int, float)),
+                    f"type: {type(cw.get('temperature'))}")
+          
+            add_test("Field 'windspeed' present", "windspeed" in cw, str(list(cw.keys())[:10]))
+            add_test("Windspeed is number", isinstance(cw.get("windspeed"), (int, float)),
+                     f"type: {type(cw.get('windspeed'))}")
 
             break  # succès, stop retry
 
