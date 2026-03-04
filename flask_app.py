@@ -59,6 +59,13 @@ def list_runs(limit=20):
     conn.close()
     return rows
 
+def fmt_ts(ts: str) -> str:
+    try:
+        dt = datetime.fromisoformat(ts)
+        return dt.strftime("%d/%m/%Y %H:%M:%S")
+    except Exception:
+        return ts
+
 def compute_qos():
     # QoS simple : avg latency, p95 latency, error rate sur les 20 derniers
     rows = list_runs(20)
@@ -189,7 +196,15 @@ def dashboard():
     db_init()
     qos = compute_qos()
     runs = list_runs(20)
-    # Affichage simple sans template supplémentaire
+
+    runs_fmt = []
+    for r in runs:
+        r = list(r)
+        r[1] = fmt_ts(r[1])  # colonne Timestamp
+        runs_fmt.append(r)
+
+    if qos.get("last_ts"):
+        qos["last_ts"] = fmt_ts(qos["last_ts"])
     html = """
 <!doctype html>
 <html lang="fr">
@@ -321,7 +336,7 @@ def dashboard():
 </body>
 </html>
 """
-    return render_template_string(html, api=API_NAME, q=qos, runs=runs)
+    return render_template_string(html, api=API_NAME, q=qos, runs=runs_fmt)
 
 @app.get("/health")
 def health():
