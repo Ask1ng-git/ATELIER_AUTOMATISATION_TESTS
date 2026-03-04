@@ -219,11 +219,14 @@ def dashboard():
     }
     *{box-sizing:border-box}
     body{
-      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1200px 600px at 10% 0%, #172257 0%, var(--bg) 60%);
-      color:var(--text); line-height:1.45;
-    }
-    .container{max-width:1100px; margin:0 auto; padding:22px;}
+       margin:0;
+       min-height:100vh;
+       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+       background: radial-gradient(1200px 600px at 10% 0%, #172257 0%, var(--bg) 60%);
+       color:var(--text);
+       line-height:1.45;
+     }
+    .container{max-width:1100px; margin:auto; padding:40px 22px;}
     .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
     .pill{
       display:inline-flex; gap:8px; align-items:center;
