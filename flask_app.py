@@ -191,155 +191,88 @@ def run_endpoint():
     ))
     return jsonify(result)
 
+@app.get("/export.json")
+def export_json():
+    db_init()
+    rows = list_runs(200)
+    data = [{
+        "id": r[0],
+        "timestamp": r[1],
+        "api": r[2],
+        "status": r[3],
+        "http_code": r[4],
+        "latency_ms": r[5],
+        "passed": r[6],
+        "failed": r[7],
+    } for r in rows]
+    return jsonify({"api": API_NAME, "runs": data})
+
+
+def get_run_details(run_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT id, ts, status, http_code, latency_ms, passed, failed, details FROM runs WHERE id=?", (run_id,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+@app.get("/run/<int:run_id>")
+def run_details(run_id):
+    db_init()
+    row = get_run_details(run_id)
+    if not row:
+        return "Not found", 404
+
+    tests = []
+    try:
+        tests = json.loads(row[7] or "[]")
+    except Exception:
+        tests = []
+
+    data = {
+        "id": row[0],
+        "ts": fmt_ts(row[1]),
+        "status": row[2],
+        "http": row[3],
+        "lat": row[4],
+        "passed": row[5],
+        "failed": row[6],
+        "tests": tests,
+    }
+    return render_template("details.html", api=API_NAME, run=data)
+
+from flask import render_template
+
 @app.get("/dashboard")
 def dashboard():
     db_init()
     qos = compute_qos()
-    runs = list_runs(20)
+    runs = list_runs(50)
 
+    # format date lisible + status badge
     runs_fmt = []
     for r in runs:
-        r = list(r)
-        r[1] = fmt_ts(r[1])  # colonne Timestamp
-        runs_fmt.append(r)
+        runs_fmt.append({
+            "id": r[0],
+            "ts": fmt_ts(r[1]),
+            "raw_ts": r[1],
+            "status": r[3],
+            "http": r[4],
+            "lat": r[5],
+            "passed": r[6],
+            "failed": r[7],
+        })
 
-    if qos.get("last_ts"):
-        qos["last_ts"] = fmt_ts(qos["last_ts"])
-    html = """
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard — API Monitoring</title>
-  <style>
-    :root{
-      --bg:#0b1020; --card:#121a33; --muted:#aab4d4; --text:#e9edff;
-      --accent:#77baff; --ok:#62d6a0; --bad:#ff6b7a; --line:#23305c;
-    }
-    *{box-sizing:border-box}
-    body{
-       margin:0;
-       min-height:100vh;
-       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-       background: radial-gradient(1200px 600px at 10% 0%, #172257 0%, var(--bg) 60%);
-       color:var(--text);
-       line-height:1.45;
-     }
-    .container{max-width:1100px; margin:auto; padding:40px 22px;}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .pill{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:6px 10px; border-radius:999px;
-      background: rgba(119,186,255,0.12);
-      border:1px solid rgba(119,186,255,0.28);
-      color:#d9ecff; font-size:12px;
-    }
-    .pill.ok{background: rgba(98,214,160,0.12); border-color: rgba(98,214,160,0.28);}
-    .pill.bad{background: rgba(255,107,122,0.12); border-color: rgba(255,107,122,0.28);}
-    a{color:var(--accent); text-decoration:none}
-    a:hover{text-decoration:underline}
-    h1{margin:14px 0 6px; font-size: clamp(22px, 3vw, 32px);}
-    .muted{color:var(--muted)}
-    .card{
-      margin-top:14px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border:1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-      border-radius:16px; padding:16px;
-    }
-    .kpi{
-      display:grid; grid-template-columns: repeat(5, 1fr);
-      gap:10px; margin-top:10px;
-    }
-    @media (max-width: 980px){ .kpi{grid-template-columns: 1fr 1fr;} }
-    @media (max-width: 560px){ .kpi{grid-template-columns: 1fr;} }
-    .box{
-      padding:12px; border-radius:14px;
-      border:1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.02);
-    }
-    .box b{display:block; font-size:13px; margin-bottom:6px;}
-    .box span{color:var(--muted); font-size:12px;}
-    .table{
-      width:100%; border-collapse: collapse; margin-top:12px; font-size:13px;
-      overflow:hidden; border-radius:12px;
-      border:1px solid rgba(255,255,255,0.08);
-    }
-    .table th,.table td{
-      padding:10px; border-bottom:1px solid rgba(255,255,255,0.08); vertical-align:top;
-    }
-    .table th{background: rgba(119,186,255,0.10); text-align:left; font-weight:600;}
-    .table tr:last-child td{border-bottom:none;}
-    .status-pass{color: var(--ok); font-weight:700;}
-    .status-fail{color: var(--bad); font-weight:700;}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="row">
-      <span class="pill">API Monitoring</span>
-      <span class="pill ok">QoS</span>
-      <span class="pill">SQLite</span>
-      <span class="pill">PythonAnywhere</span>
-    </div>
+    # Dernier run affichage
+    last = runs_fmt[0] if runs_fmt else None
 
-    <h1>Dashboard — {{api}}</h1>
-    <p class="muted">Endpoints: <a href="/run">/run</a> · <a href="/health">/health</a></p>
-
-    <div class="card">
-      <h2 style="margin:0;">QoS (last 20 runs)</h2>
-
-      <div class="kpi">
-        <div class="box"><b>Count</b><span>{{q.count}}</span></div>
-        <div class="box"><b>Error rate</b><span>{{q.error_rate}}</span></div>
-        <div class="box"><b>Latency avg (ms)</b><span>{{q.latency_ms_avg}}</span></div>
-        <div class="box"><b>Latency p95 (ms)</b><span>{{q.latency_ms_p95}}</span></div>
-        <div class="box">
-          <b>Last run</b>
-          <span>
-            {{q.last_ts}} ·
-            {% if q.last_status == "PASS" %}
-              <span class="status-pass">PASS</span>
-            {% else %}
-              <span class="status-fail">FAIL</span>
-            {% endif %}
-            · HTTP {{q.last_http_code}} · {{q.last_latency_ms}} ms
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin:0 0 10px;">History</h2>
-      <table class="table">
-        <thead>
-          <tr><th>ID</th><th>Timestamp</th><th>Status</th><th>HTTP</th><th>Latency (ms)</th><th>Passed</th><th>Failed</th></tr>
-        </thead>
-        <tbody>
-          {% for r in runs %}
-          <tr>
-            <td>{{r[0]}}</td>
-            <td>{{r[1]}}</td>
-            <td>
-              {% if r[3] == "PASS" %}
-                <span class="status-pass">PASS</span>
-              {% else %}
-                <span class="status-fail">FAIL</span>
-              {% endif %}
-            </td>
-            <td>{{r[4]}}</td><td>{{r[5]}}</td><td>{{r[6]}}</td><td>{{r[7]}}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-</body>
-</html>
-"""
-    return render_template_string(html, api=API_NAME, q=qos, runs=runs_fmt)
+    return render_template(
+        "dashboard.html",
+        api=API_NAME,
+        q=qos,
+        runs=runs_fmt,
+        last=last
+    )
 
 @app.get("/health")
 def health():
