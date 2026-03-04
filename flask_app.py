@@ -9,8 +9,9 @@ import requests
 from datetime import datetime
 
 app = Flask(__name__)
+@app.get("/")
 def consignes():
-    return render_template("consignes.html")
+     return render_template('consignes.html')
 
 API_NAME = "Quotable"
 API_URL = "https://api.quotable.io/random"
