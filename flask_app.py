@@ -59,6 +59,28 @@ def list_runs(limit=20):
     conn.close()
     return rows
 
+def list_runs_full(limit=20):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, ts, status, http_code, latency_ms, passed, failed
+        FROM runs
+        ORDER BY id DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+def build_series(rows):
+    # rows = [(id, ts, status, http, lat, passed, failed), ...] newest first
+    rows_rev = list(reversed(rows))  # oldest -> newest for charts
+    labels = [fmt_ts(r[1])[0:16] for r in rows_rev]  # "dd/mm/yyyy hh:mm"
+    lat = [r[4] if r[4] is not None else 0 for r in rows_rev]
+    passed = [r[5] for r in rows_rev]
+    failed = [r[6] for r in rows_rev]
+    return labels, lat, passed, failed
+
 def fmt_ts(ts: str) -> str:
     try:
         dt = datetime.fromisoformat(ts)
@@ -247,31 +269,41 @@ from flask import render_template
 def dashboard():
     db_init()
     qos = compute_qos()
-    runs = list_runs(50)
 
-    # format date lisible + status badge
+    rows = list_runs_full(20)
     runs_fmt = []
-    for r in runs:
+    for r in rows:
         runs_fmt.append({
             "id": r[0],
             "ts": fmt_ts(r[1]),
-            "raw_ts": r[1],
-            "status": r[3],
-            "http": r[4],
-            "lat": r[5],
-            "passed": r[6],
-            "failed": r[7],
+            "status": r[2],
+            "http": r[3],
+            "lat": r[4],
+            "passed": r[5],
+            "failed": r[6],
         })
 
-    # Dernier run affichage
     last = runs_fmt[0] if runs_fmt else None
+    prev = runs_fmt[1] if len(runs_fmt) > 1 else None
+
+    labels, lat_series, pass_series, fail_series = build_series(rows)
+
+    # delta latence vs run précédent (pour le petit "+34ms")
+    delta_lat = None
+    if last and prev and last["lat"] is not None and prev["lat"] is not None:
+        delta_lat = round(last["lat"] - prev["lat"], 2)
 
     return render_template(
         "dashboard.html",
         api=API_NAME,
         q=qos,
         runs=runs_fmt,
-        last=last
+        last=last,
+        delta_lat=delta_lat,
+        labels=labels,
+        lat_series=lat_series,
+        pass_series=pass_series,
+        fail_series=fail_series,
     )
 
 @app.get("/health")
